@@ -1003,28 +1003,32 @@ Modify the search form to direct to the new search view.
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}TWEET APP LAYOUT{% endblock %}</title>
+    <title>
+        {% block title %}
+        TWEET APP LAYOUT
+        {% endblock %}
+    </title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
 </head>
 <body>
     <nav class="navbar navbar-expand-lg bg-body-tertiary">
         <div class="container-fluid">
-          <a class="navbar-brand" href="{% url 'tweet_list' %}">Tweet Pro</a>
+          <a class="navbar-brand" href="{% url 'tweet_list'%}">Tweet Pro</a>
           <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
           </button>
           <div class="collapse navbar-collapse" id="navbarSupportedContent">
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
               <li class="nav-item">
-                <a class="nav-link active" aria-current="page" href="{% url 'tweet_list' %}">Home</a>
+                <a class="nav-link active" aria-current="page" href="{% url 'tweet_list'%}">Home</a>
               </li>
             </ul>
-            <form class="d-flex me-3" role="search" method="get" action="{% url 'search' %}">
-              <input class="form-control me-3" type="search" placeholder="Search tweets or users" aria-label="Search" name="q">
+            <form class="d-flex me-3" role="search" action="{% url 'search' %}" method="get">
+              <input class="form-control me-3" type="search" placeholder="Search " aria-label="Search" name="q">
               <button class="btn btn-outline-success" type="submit">Search</button>
             </form>
             {% if user.is_authenticated %}
-            <form method="post" action="{% url 'logout' %}">
+            <form method="post" action="{% url 'logout' %}"> 
               {% csrf_token %}
               <button type="submit" class="btn btn-outline-danger">Logout</button>
             </form>
@@ -1036,10 +1040,13 @@ Modify the search form to direct to the new search view.
         </div>
       </nav>
     <div class="container">
-        {% block content %}{% endblock %}
+        {% block content %}
+        <!-- Your page content goes here -->
+        {% endblock %}
     </div>
 </body>
 </html>
+
 ```
 
 4. **search_results.html**
@@ -1047,36 +1054,161 @@ Modify the search form to direct to the new search view.
 Create a new template to display search results.
 
 ```html
-{% extends "layout.html" %}
-
-{% block title %}Search Results{% endblock %}
+{% extends 'layout.html' %}
 
 {% block content %}
-<div class="container mt-5">
-    <h2>Search Results</h2>
-    {% if tweets %}
-        <div class="row">
-            {% for tweet in tweets %}
-            <div class="col-md-4">
-                <div class="card mb-4">
-                    {% if tweet.photo %}
-                    <img src="{{ tweet.photo.url }}" class="card-img-top" alt="...">
-                    {% endif %}
-                    <div class="card-body">
-                        <h5 class="card-title">{{ tweet.user.username }}</h5>
-                        <p class="card-text">{{ tweet.text }}</p>
-                        <a href="{% url 'tweet_edit' tweet.id %}" class="btn btn-primary">Edit</a>
-                        <a href="{% url 'tweet_delete' tweet.id %}" class="btn btn-danger">Delete</a>
-                    </div>
-                </div>
+<h2>Search Results</h2>
+
+{% if tweets %}
+    <div class="container row gap-3">
+        {% for tweet in tweets %}
+        <div class="card" style="width: 18rem;">
+            <img src="{{ tweet.photo.url }}" class="card-img-top" alt="...">
+            <div class="card-body">
+              <h5 class="card-title">{{ tweet.user.username }}</h5>
+              <p class="card-text">{{ tweet.text }}</p>
+              <a href="{% url 'tweet_edit' tweet.id %}" class="btn btn-primary">Edit</a>
+              <a href="{% url 'tweet_delete' tweet.id %}" class="btn btn-danger">Delete</a>
             </div>
-            {% endfor %}
-        </div>
-    {% else %}
-        <p>No results found</p>
-    {% endif %}
-</div>
+          </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <p>No tweets found matching your search.</p>
+{% endif %}
 {% endblock %}
+
 ```
+Ensure the Search View is Correct
+Verify the search view in views.py:
+
+```html
+from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib.auth import login
+from .models import Tweet
+from .forms import TweetForm, UserRegistrationForm
+from django.db.models import Q
+
+def index(request):
+    return render(request, 'index.html')
+
+def tweet_list(request):
+    tweets = Tweet.objects.all()
+    return render(request, 'tweet_list.html', {'tweets': tweets})
+
+def tweet_create(request):
+    if request.method == "POST":
+        form = TweetForm(request.POST, request.FILES)
+        if form.is_valid():
+            form.save()
+            return redirect('tweet_list')
+    else:
+        form = TweetForm()
+    return render(request, 'tweet_form.html', {'form': form})
+
+def tweet_edit(request, tweet_id):
+    tweet = get_object_or_404(Tweet, id=tweet_id)
+    if request.method == "POST":
+        form = TweetForm(request.POST, request.FILES, instance=tweet)
+        if form.is_valid():
+            form.save()
+            return redirect('tweet_list')
+    else:
+        form = TweetForm(instance=tweet)
+    return render(request, 'tweet_form.html', {'form': form})
+
+def tweet_delete(request, tweet_id):
+    tweet = get_object_or_404(Tweet, id=tweet_id)
+    if request.method == "POST":
+        tweet.delete()
+        return redirect('tweet_list')
+    return render(request, 'tweet_confirm_delete.html', {'tweet': tweet})
+
+def register(request):
+    if request.method == "POST":
+        form = UserRegistrationForm(request.POST)
+        if form.is_valid():
+            user = form.save(commit=False)
+            user.set_password(form.cleaned_data['password1'])
+            user.save()
+            login(request, user)
+            return redirect('tweet_list')
+    else:
+        form = UserRegistrationForm()
+    return render(request, 'registration/register.html', {'form': form})
+
+def search(request):
+    query = request.GET.get('q')
+    if query:
+        tweets = Tweet.objects.filter(Q(text__icontains=query) | Q(user__username__icontains=query))
+    else:
+        tweets = Tweet.objects.all()
+    return render(request, 'search_results.html', {'tweets': tweets})
+```
+
+
+3. Ensure URL Configuration
+Ensure the urls.py in your tweet app has the search path configured.
+
+```html
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path('index/', views.index, name='index'),
+    path('', views.tweet_list, name='tweet_list'),
+    path('create/', views.tweet_create, name='tweet_create'),
+    path('<int:tweet_id>/edit/', views.tweet_edit, name='tweet_edit'),
+    path('<int:tweet_id>/delete/', views.tweet_delete, name='tweet_delete'),
+    path('register/', views.register, name='register'),
+    path('search/', views.search, name='search'),
+]
+```
+
+4. Create search_results.html
+Ensure your search_results.html is correctly set up to display the results:
+
+```html
+
+{% extends 'layout.html' %}
+
+{% block content %}
+<h2>Search Results</h2>
+
+{% if tweets %}
+    <div class="container row gap-3">
+        {% for tweet in tweets %}
+        <div class="card" style="width: 18rem;">
+            <img src="{{ tweet.photo.url }}" class="card-img-top" alt="...">
+            <div class="card-body">
+              <h5 class="card-title">{{ tweet.user.username }}</h5>
+              <p class="card-text">{{ tweet.text }}</p>
+              <a href="{% url 'tweet_edit' tweet.id %}" class="btn btn-primary">Edit</a>
+              <a href="{% url 'tweet_delete' tweet.id %}" class="btn btn-danger">Delete</a>
+            </div>
+          </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <p>No tweets found matching your query.</p>
+{% endif %}
+{% endblock %}
+
+```
+
+5. Test the Search Functionality
+Run the development server:
+
+```bash
+
+python manage.py runserver
+```
+
+Perform a search:
+
+Navigate to your homepage.
+Enter a search query (e.g., "dhruv") in the search box.
+Check if the search results are correctly displayed.
+By following these steps, your search functionality should now be fully integrated and operational, allowing you to search for tweets or users effectively. If there are still issues, double-check the field names and ensure the database has the relevant data to match your queries.
 
 With these steps completed, your Django project now has fully functional user authentication, allowing users to register, log in, log out, and perform searches within the app. This will enhance user experience and make the TweetProject more interactive and user-friendly.
