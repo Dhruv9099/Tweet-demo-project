@@ -1,0 +1,17 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+
+<h2>Logged out </h2>
+
+<p>You have been logged out successfully. You will be redirected to the home page.
+    <a href="{% url 'login' %}">Login here</a>
+</p>
+
+{% comment %} <script>
+    setTimeout(function() {
+        window.location.href = '/';
+    }, 2000);
+</script> {% endcomment %}
+
+{% endblock %}
